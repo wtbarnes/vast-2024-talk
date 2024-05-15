@@ -1,13 +1,11 @@
 ---
-title: An Example SunPy Presentation
-subtitle: Conference / Location / Date
+title: SunPy--The Community-developed, Free, and Open-source Solar Data Analysis Environment for Python
+subtitle: VAST Seminar Series / Virtual / 15 May 2024
 authors:
-- A. Speaker
-- B. Presenter
-- The SunPy Project
+- Will Barnes
+- on behalf of The SunPy Project
 institute:
-- Example University
-- NASA
+- American University/NASA GSFC
 format:
   revealjs:
     margin: 0
@@ -15,7 +13,7 @@ format:
     height: 100%
     theme: [default, theme/sunpy-theme.scss]
     logo: static/sunpy_logo_landscape.svg
-    footer: "[wtbarnes.github.io/sunpy-presentation-template](https://wtbarnes.github.io/sunpy-presentation-template)"
+    footer: "[wtbarnes.github.io/vast-2024-talk](https://wtbarnes.github.io/vast-2024-talk)"
 title-slide-attributes: 
   data-background-image: static/sunpy_icon.svg
   data-background-position: -100% 50%
@@ -26,40 +24,326 @@ title-slide-attributes:
 #| echo: false
 #| eval: true
 import os
+import glob
+import matplotlib.pyplot as plt
 os.environ["PARFIVE_HIDE_PROGRESS"] = "True"
 ```
 
-# The `sunpy` Package
+# <span style="color:white;">What is solar physics?</span> {background-video="https://svs.gsfc.nasa.gov/vis/a030000/a030000/a030072/heliophysics_fleet_capture_erup_cme_1280x720.mp4" background-video-loop="true" background-video-muted="true"}
 
----
+::: {.notes}
+- Astronomy/astrophysics of the Sun
+- Can study our star in greater detail than any other
+- Impact on space weather on the earth
+- A laboratory for astrophysics, fundamental plasma physics, and more!
+- Primary focus is the solar atmosphere
+:::
 
-![](static/tour.svg){height="750"}
+# <span style="color:white;">Solar data are dyanmic</span>{ background-video="https://api.helioviewer.org/cache/movies/2023/07/10/1SDn5/2018_05_29_00_07_33_2018_05_30_00_02_45_AIA_171.mp4" background-video-loop="true" background-video-muted="true"}
 
-## The package includes...
+::: {.notes}
+- Magnetic field holds the key to why the corona is heated to million degree temperatures
+- Plasma trapped along field lines
+- Twisted magnetic field releases energy into the plasma, thereby heating it
+- We can start to understand this system by observing these areas of intense magnetic activity at different wavelengths as a function of time
+:::
 
-- Data search and retrieval
-- Data structures for timeseries and image data
-- Coordinate frames and conversions
-- and much more!
+# <span style="color:white;">...high resolution</span>{ background-image="static/sharpened_hic21.png"}
 
-## Another slide with a plot inline
+::: {.footer}
+Image credit: NASA MSFC, SAO, Hi-C 2.1 Instrument Team 
+:::
+
+::: {.notes}
+- Collect many different kinds of data
+- Spectra allow us to see more details: more precise temperatures, how things are moving, where things are forming
+- We observe different structures at different wavelengths
+:::
+
+## ...observed from many viewpoints
+
+:::: {.columns}
+::: {.column width="2%"}
+:::
+::: {.column width="38%"}
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Solar_orbiter_insignia.png/360px-Solar_orbiter_insignia.png)
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Parker_Solar_Probe_insignia.png/300px-Parker_Solar_Probe_insignia.png)
+
+![](https://stereo.gsfc.nasa.gov/img/stereo_logo.png){width="45%"}
+![](https://sdo.gsfc.nasa.gov/assets/img/site/SDO_Logo_glassy_lg.png){width="40%"}
+:::
+::: {.column width="60%"}
+![](static/solar_mach_spacecraft_positions.png)
+:::
+::::
+
+## Challenges
+
+:::: {.columns}
+::: {.column width="95%"}
+
+### Data...{.fragment}
+
+::: {.incremental}
+- ...are **spread** across many different providers
+- ...are often **large** and split across many files
+- ...can be very **heterogeneous** (may or may not follow FITS standard)
+- ...must be held together with the **metadata**
+- ...are expressed in complex **coordinate systems**
+:::
+
+### Software...{.fragment}
+
+::: {.incremental}
+- ...is typically developed by instrument teams on a best effort basis
+- ...development is not coordinated across instrument teams
+- ...has traditionally been written in IDL, though with a centralized "core" codebase (SSW)
+:::
+
+:::
+::::
+
+## `sunpy`: Solar Data Analysis in Python
+
+:::: {.columns}
+::: {.column width="55%"}
+- Began in March of 2011 at NASA GSFC
+- Frustration with **licensing fees**, fragility of SSW
+- Early attempts using GDL$\to$**Python**
+- v0.1 released 9/2011
+- v1.0 in 6/2019-paper currently has **>200 citations**
+- Now at v5.1 with v6.0 imminent
+- Some early skepticism due to heritage of IDL/SSW
+- Now the **default choice**, especially for ECRs 
+- Open-source and **openly developed**–by the community, for the community
+- Built on SciPy ecosystem, especially `astropy`
+:::
+::: {.column width="45%"}
+![](static/sunpy_citations.png){.fragment}
+
+![](static/mailing-list-post.png){.fragment}
+:::
+::::
+
+## `sunpy`: Solar Data Analysis in Python {background-image="static/tour.svg" background-size="90%"}
+
+## Searching for Data with `sunpy`
 
 ```{python}
+#| echo: true
+#| output-location: column-fragment
+#| eval: true
+from sunpy.net import Fido, attrs as a
+import astropy.units as u
+
+query = Fido.search(                                 # <1>
+  a.Time('2018-05-29 18:00', '2018-05-29 18:00:10'), # <1>
+  a.Wavelength(171*u.angstrom),                      # <1>
+  a.Instrument.aia                                   # <1>
+)                                                    # <1> 
+print(query)
+```
+1. Search remote repository for AIA 171 Å images between 18:00 and 18:10 on May 29 2018.
+
+```{python}
+#| echo: true
+#| output-location: column-fragment
+#| eval: true
+files = Fido.fetch(query, path='data/{instrument}') # <2>
+print(files)
+```
+2. Download all FITS files corresponding to this search result to `data/AIA`.
+
+## Loading Data with `sunpy`
+
+```{python}
+# keeps things from falling over if the download fails (which it does often)
+if len(files) == 0:
+  files = glob.glob('data/AIA/*.fits')
+```
+
+```{python}
+#| echo: true
+#| output-location: fragment
 #| fig-align: center
 import sunpy.map
-import sunpy.data.sample
 
-m = sunpy.map.Map(sunpy.data.sample.AIA_171_IMAGE)
+m = sunpy.map.Map(files)
 m.peek()
 ```
 
-## You can also include code
+## Inspecting Data with `sunpy`
 
-The code below shows how to create a coordinate in the same frame as the map shown before.
 ```{python}
-# | echo: true
-import astropy.coordinates
-import astropy.units as u
-my_coord = astropy.coordinates.SkyCoord(Tx=300*u.arcsec, Ty=500*u.arcsec, frame=m.coordinate_frame)
-print(my_coord)
+#| echo: true
+#| output-location: column-fragment
+print(m.detector)
+print(m.wavelength)
+print(m.date)
+print(m.observer_coordinate)
 ```
+
+```{python}
+#| echo: true
+#| output-location: column-fragment
+from astropy.coordinates import SkyCoord
+
+corner = SkyCoord(Tx=-375*u.arcsec, Ty=0*u.arcsec,
+                  frame=m.coordinate_frame)
+print(m.world_to_pixel(corner))
+m_cutout = m.submap(corner,
+                    width=500*u.arcsec,
+                    height=500*u.arcsec)
+m_cutout.peek()
+```
+
+## Transforming Data with `sunpy`
+
+```{python}
+#| eval: true
+#| echo: false
+import pathlib
+import astropy.time
+if not list(pathlib.Path('data/sequence/').glob('*.fits')):
+  interval = 24*u.h
+  midpoint = astropy.time.Time('2018-05-29 18:00:00', scale='utc')
+  time_start = midpoint-interval/2
+  time_end = midpoint+interval/2
+  q = Fido.search(
+      a.Time(time_start, time_end),
+      a.Sample(6*u.h),
+      a.Wavelength(171*u.AA),
+      a.Instrument.aia,
+  )
+  file_seq = Fido.fetch(q, path='data/sequence',)
+```
+
+```{python}
+#| output: true
+#| output-location: fragment
+#| echo: true 
+#| fig-align: center
+from sunpy.coordinates import propagate_with_solar_surface
+m_seq = sunpy.map.Map('data/sequence/*.fits', sequence=True)
+fig = plt.figure(figsize=(16, 4), layout='constrained')
+for i, m in enumerate(m_seq):
+  ax = fig.add_subplot(1, len(m_seq), i+1, projection=m)
+  m.plot(axes=ax)
+  with propagate_with_solar_surface():
+    blc = m_cutout.bottom_left_coord.transform_to(m.coordinate_frame)
+    trc = m_cutout.top_right_coord.transform_to(m.coordinate_frame)
+  m.draw_quadrangle(blc, top_right=trc)
+```
+
+## Transforming Data with `sunpy`
+
+```{python}
+#| output: true
+#| output-location: fragment
+#| echo: true 
+#| fig-align: center
+#| code-line-numbers: "|1,2"
+with propagate_with_solar_surface():
+  m_seq_aligned = sunpy.map.Map([m.reproject_to(m_cutout.wcs) for m in m_seq], sequence=True)
+fig = plt.figure(figsize=(16, 4), layout='constrained')
+for i, m in enumerate(m_seq_aligned):
+  ax = fig.add_subplot(1,len(m_seq_aligned), i+1, projection=m)
+  m.plot(axes=ax, cmap='sdoaia171', title=m_seq[i].date)
+```
+
+## The SunPy Project {background-image="static/project-summary.svg"}
+
+## The SunPy Ecosystem 
+
+:::: {.columns}
+::: {.column width="2%"}
+:::
+::: {.column width="25%"}
+#### Functionality
+![](https://img.shields.io/badge/General_Package-brightgreen.svg)
+![](https://img.shields.io/badge/Specialized_Package-brightgreen.svg)
+![](https://img.shields.io/badge/Not_Relevant-red.svg)
+
+#### Integration
+![](https://img.shields.io/badge/Full_Integration-brightgreen.svg)
+![](https://img.shields.io/badge/Partial_Integration-orange.svg)
+![](https://img.shields.io/badge/No_Integration-red.svg)
+
+#### Documentation
+![](https://img.shields.io/badge/Extensive-brightgreen.svg)
+![](https://img.shields.io/badge/Good-orange.svg)
+![](https://img.shields.io/badge/Some-orange.svg)
+![](https://img.shields.io/badge/Little-red.svg)
+
+#### Testing
+![](https://img.shields.io/badge/Excellent-brightgreen.svg)
+![](https://img.shields.io/badge/Good-orange.svg)
+![](https://img.shields.io/badge/Needs_Work-red.svg)
+
+#### Duplication
+![](https://img.shields.io/badge/None-brightgreen.svg)
+![](https://img.shields.io/badge/Some-orange.svg)
+![](https://img.shields.io/badge/Major-red.svg)
+
+#### Community
+![](https://img.shields.io/badge/Excellent-brightgreen.svg)
+![](https://img.shields.io/badge/Good-orange.svg)
+![](https://img.shields.io/badge/Needs_Work-red.svg)
+
+#### Development Status
+![](https://img.shields.io/badge/Stable-brightgreen.svg)
+![](https://img.shields.io/badge/Subject_to_change-orange.svg)
+![](https://img.shields.io/badge/Low_Activity-orange.svg)
+![](https://img.shields.io/badge/Needs_Work-red.svg)
+
+:::
+::: {.column width="18%"}
+![](static/affiliated-package-review.png){.fragment}
+:::
+::: {.column width="55%"}
+:::{.r-stack}
+![](static/sunpy-affiliated-packages.png){.fragment}
+
+![](static/pyopensci-logo.png){.fragment fig-align="center"}
+:::
+:::
+::::
+
+## The SunPy Ecosystem {visibility="hidden"}
+
+::: {.r-stack}
+![](static/ecosystem_animation/1_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/2_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/3_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/4_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/5_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/6_ecosystem_illustration.svg){.fragment width="2000px"}
+
+![](static/ecosystem_animation/7_ecosystem_illustration.svg){.fragment width="2000px"}
+:::
+
+## Summary
+
+:::: {.columns}
+::: {.column width="2%"}
+:::
+::: {.column width="98%"}
+- Solar data are **large, complex, and heterogenous**, but hold great value in combination
+- `sunpy` is a community-developed Python package for solar data analysis
+- The `sunpy` package provides the ability to **search**, **load**, and **transform** solar data
+- The SunPy Project is composed of not just the **code**, but also the **people** and the **community**
+- The SunPy Project maintains an interoperable **ecosystem** of tools for working with solar data
+
+### Resources
+
+- Website: [sunpy.org](https://sunpy.org/)
+- GitHub: [github.com/sunpy](https://github.com/sunpy)
+- Documentation: [docs.sunpy.org](https://docs.sunpy.org/en/stable/)
+- [Matrix Chat](https://app.element.io/#/room/#sunpy:openastronomy.org)
+:::
+::::
