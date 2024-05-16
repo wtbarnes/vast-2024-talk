@@ -1,2 +1,3 @@
-# sunpy-presentation-template
-Quarto RevealJS template for SunPy Presentations
+# VAST Seminar
+
+Slides for my talk on SunPy at the [VAST Seminar Series](https://vast-seminars.github.io/).
